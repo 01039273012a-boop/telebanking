@@ -327,7 +327,7 @@ body{
 
     <div class="month">
       <span class="small">이번 달 받은 포인트</span>
-      <span class="plus">+320,000 P</span>
+      <span class="plus" id="monthlyReceived">+0 P</span>
     </div>
   </section>
 
@@ -501,7 +501,10 @@ async function loadTeleBankingAccount() {
     }
 
     const user = data.user;
-
+    
+document.getElementById("monthlyReceived").textContent =
+  "+" + Number(data.monthlyReceived || 0).toLocaleString("ko-KR") + " P";
+    
     // 실제 포인트 잔액 표시
     document.getElementById("balance").textContent =
       Number(user.balance || 0).toLocaleString("ko-KR") + " P";
