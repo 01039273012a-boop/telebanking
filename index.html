@@ -902,11 +902,124 @@ function openAdminUser(telegramId, name, username, balance) {
     '<div style="padding:20px 0;color:#888;">거래내역을 불러오는 중...</div>';
 
   document.getElementById("adminUserPage").classList.add("show");
+  loadAdminUserHistory(telegramId);
 }
 
 function closeAdminUser() {
   document.getElementById("adminUserPage").classList.remove("show");
   selectedAdminUserId = null;
+}async function loadAdminUserHistory(telegramId) {
+  const historyBox = document.getElementById("adminUserHistory");
+
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        initData: tg.initData,
+        action: "admin_history",
+        targetId: telegramId
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      if (data.error === "ADMIN_ONLY") {
+        alert("관리자만 사용할 수 있습니다.");
+        return;
+      }
+
+      throw new Error(data.error || "ADMIN_HISTORY_FAILED");
+    }
+
+    const items = [];
+
+    (data.transactions || []).forEach((tx) => {
+      const sent = Number(tx.sender_id) === Number(telegramId);
+
+      items.push({
+        created_at: tx.created_at,
+        title: sent ? "포인트 보냄" : "포인트 받음",
+        amount: Number(tx.amount || 0),
+        sign: sent ? "-" : "+",
+        type: sent ? "sent" : "received"
+      });
+    });
+
+    (data.adjustments || []).forEach((adj) => {
+      const added = adj.adjustment_type === "add";
+
+      items.push({
+        created_at: adj.created_at,
+        title: added ? "관리자 지급" : "관리자 차감",
+        amount: Number(adj.amount || 0),
+        sign: added ? "+" : "-",
+        type: added ? "received" : "sent"
+      });
+    });
+
+    items.sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
+
+    if (items.length === 0) {
+      historyBox.innerHTML =
+        '<div style="padding:20px 0;color:#888;">거래내역이 없습니다.</div>';
+      return;
+    }
+
+    historyBox.innerHTML = "";
+
+    items.slice(0, 30).forEach((item) => {
+      const row = document.createElement("div");
+
+      const date = new Date(item.created_at);
+
+      const dateText =
+        (date.getMonth() + 1) +
+        "월 " +
+        date.getDate() +
+        "일 " +
+        String(date.getHours()).padStart(2, "0") +
+        ":" +
+        String(date.getMinutes()).padStart(2, "0");
+
+      const amountText =
+        item.sign +
+        item.amount.toLocaleString("ko-KR") +
+        " P";
+
+      row.style.cssText =
+        "padding:16px 0;border-bottom:1px solid #eee;" +
+        "display:flex;justify-content:space-between;align-items:center;";
+
+      row.innerHTML =
+        '<div>' +
+          '<div style="font-size:16px;font-weight:800;">' +
+            item.title +
+          '</div>' +
+          '<div style="font-size:13px;color:#888;margin-top:5px;">' +
+            dateText +
+          '</div>' +
+        '</div>' +
+        '<div style="font-size:17px;font-weight:900;' +
+          (item.type === "received" ? "color:#00a878;" : "color:#16181c;") +
+        '">' +
+          amountText +
+        '</div>';
+
+      historyBox.appendChild(row);
+    });
+
+  } catch (error) {
+    console.error("관리자 거래내역 오류:", error);
+
+    historyBox.innerHTML =
+      '<div style="padding:20px 0;color:#888;">거래내역을 불러오지 못했습니다.</div>';
+  }
 }
   async function adminAdjustPoints(type) {
   if (!selectedAdminUserId) {
@@ -973,6 +1086,8 @@ function closeAdminUser() {
       Number(data.balance || 0).toLocaleString("ko-KR") + " P";
 
     document.getElementById("adminPointAmount").value = "";
+    
+    loadAdminUserHistory(selectedAdminUserId);
 
     alert(
       amount.toLocaleString("ko-KR") +
