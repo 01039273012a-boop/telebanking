@@ -587,7 +587,7 @@ if (tg) {
   tg.expand();
 
   loadTeleBankingAccount();
-
+  handlePaymentLink();
   const user = tg.initDataUnsafe?.user;
 
   if (user) {
@@ -600,7 +600,55 @@ if (tg) {
       name || "텔레뱅킹 고객님";
   }
 }
+async function handlePaymentLink() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const payeeId = params.get("pay");
 
+    if (!payeeId) return;
+
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        initData: tg.initData,
+        action: "payee",
+        payeeId: payeeId
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok || !data.payee) {
+      throw new Error(data.error || "PAYEE_FAILED");
+    }
+
+    const payee = data.payee;
+
+    const name =
+      [payee.first_name, payee.last_name]
+        .filter(Boolean)
+        .join(" ") ||
+      payee.username ||
+      "텔레뱅킹 사용자";
+
+    const handle = payee.username
+      ? "@" + payee.username
+      : "";
+
+    selectFriend(
+      name,
+      handle,
+      Number(payee.telegram_id)
+    );
+
+  } catch (error) {
+    console.error("받기 링크 오류:", error);
+    alert("받는 사람 정보를 확인할 수 없습니다.");
+  }
+}
 let friendName = "";
 let friendHandle = "";
 async function openHistory() {
