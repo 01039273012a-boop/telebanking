@@ -346,7 +346,7 @@ body{
   </section>
 
   <section class="quick">
-    <button onclick="alert('거래내역 전체보기')">
+    <button onclick="openHistory()">
       <span class="qicon">📋</span>내역
     </button>
     <button onclick="openSend()">
@@ -400,7 +400,19 @@ body{
     <span class="nav-icon">☰</span>더보기
   </button>
 </nav>
+<!-- 실제 거래내역 화면 -->
+<div class="overlay" id="historyPage">
+  <div class="page">
+    <button class="back" onclick="closeHistory()">×</button>
+    <h2>거래내역</h2>
 
+    <div id="historyList">
+      <div style="padding:30px 0;text-align:center;color:#888;">
+        거래내역을 불러오는 중...
+      </div>
+    </div>
+  </div>
+</div>
 <div class="overlay" id="sendPage">
   <div class="page">
     <button class="back" onclick="closePage()">‹</button>
@@ -548,7 +560,108 @@ if (tg) {
 
 let friendName = "";
 let friendHandle = "";
+async function openHistory() {
+  const historyPage = document.getElementById("historyPage");
+  const historyList = document.getElementById("historyList");
 
+  historyPage.classList.add("show");
+
+  historyList.innerHTML =
+    '<div style="padding:30px 0;text-align:center;color:#888;">거래내역을 불러오는 중...</div>';
+
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        initData: tg.initData,
+        action: "history"
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || "HISTORY_FAILED");
+    }
+
+    const transactions = data.transactions || [];
+
+    if (transactions.length === 0) {
+      historyList.innerHTML =
+        '<div style="padding:40px 0;text-align:center;color:#888;">아직 거래내역이 없습니다.</div>';
+      return;
+    }
+
+    historyList.innerHTML = "";
+
+    transactions.forEach((tx) => {
+      const received = tx.type === "received";
+      const amount = Number(tx.amount || 0).toLocaleString("ko-KR");
+
+      const date = new Date(tx.created_at);
+
+      const dateText = date.toLocaleString("ko-KR", {
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+
+      const item = document.createElement("div");
+
+      item.style.cssText =
+        "padding:18px 4px;border-bottom:1px solid #eee;" +
+        "display:flex;justify-content:space-between;align-items:center;";
+
+      const left = document.createElement("div");
+
+      const title = document.createElement("div");
+      title.style.cssText =
+        "font-size:16px;font-weight:700;margin-bottom:6px;";
+
+      title.textContent =
+        received
+          ? tx.otherName + "에게 받음"
+          : tx.otherName + "에게 보냄";
+
+      const time = document.createElement("div");
+      time.style.cssText =
+        "font-size:13px;color:#888;";
+
+      time.textContent = dateText;
+
+      left.appendChild(title);
+      left.appendChild(time);
+
+      const amountEl = document.createElement("div");
+
+      amountEl.style.cssText =
+        "font-size:17px;font-weight:800;" +
+        (received ? "color:#00a878;" : "color:#16181c;");
+
+      amountEl.textContent =
+        (received ? "+" : "-") + amount + " P";
+
+      item.appendChild(left);
+      item.appendChild(amountEl);
+
+      historyList.appendChild(item);
+    });
+
+  } catch (error) {
+    console.error("거래내역 오류:", error);
+
+    historyList.innerHTML =
+      '<div style="padding:40px 0;text-align:center;color:#888;">거래내역을 불러오지 못했습니다.</div>';
+  }
+}
+
+function closeHistory() {
+  document.getElementById("historyPage").classList.remove("show");
+}
 function openSend(){
   document.getElementById("sendPage").classList.add("show");
 }
