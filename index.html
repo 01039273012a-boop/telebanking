@@ -323,7 +323,7 @@ body{
 
   <section class="balance-card">
     <div class="small">내 포인트</div>
-    <div class="balance">1,250,000 P</div>
+    <div class="balance" id="balance">0 P</div>
 
     <div class="month">
       <span class="small">이번 달 받은 포인트</span>
@@ -469,10 +469,61 @@ body{
 
 <script>
 const tg = window.Telegram?.WebApp;
+const API_URL =
+  "https://kwnxigztqnsoluifiupf.supabase.co/functions/v1/telebanking-api";
 
+async function loadTeleBankingAccount() {
+  try {
+    if (!tg || !tg.initData) {
+      console.log("Telegram Mini App 밖에서 실행 중");
+      return;
+    }
+
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        initData: tg.initData
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || "계정 정보를 불러오지 못했습니다.");
+    }
+
+    const user = data.user;
+
+    // 실제 포인트 잔액 표시
+    document.getElementById("balance").textContent =
+      Number(user.balance || 0).toLocaleString("ko-KR") + " P";
+
+    // DB에서 받은 이름 표시
+    const displayName =
+      [user.first_name, user.last_name]
+        .filter(Boolean)
+        .join(" ");
+
+    if (displayName) {
+      document.getElementById("userName").textContent = displayName;
+    }
+
+    console.log("텔레뱅킹 계정 연결 완료:", user.telegram_id);
+
+  } catch (error) {
+    console.error("텔레뱅킹 계정 연결 오류:", error);
+
+    document.getElementById("balance").textContent = "연결 오류";
+  }
+}
 if (tg) {
   tg.ready();
   tg.expand();
+
+  loadTeleBankingAccount();
 
   const user = tg.initDataUnsafe?.user;
 
