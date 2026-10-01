@@ -397,11 +397,42 @@ body{
   <button onclick="alert('이벤트 준비 중입니다.')">
     <span class="nav-icon">🎁</span>이벤트
   </button>
-  <button onclick="alert('더보기 준비 중입니다.')">
-    <span class="nav-icon">☰</span>더보기
+  <button id="moreBtn" onclick="alert('더보기 준비 중입니다.')">
+  <span class="nav-icon">☰</span><span id="moreBtnText">더보기</span>
   </button>
 </nav>
   <!-- 포인트 받기 화면 -->
+
+  <!-- 관리자 화면 -->
+<div class="overlay" id="adminPage">
+  <div class="page">
+    <button class="back" onclick="closeAdmin()">×</button>
+    <h2>관리자</h2>
+
+    <div style="margin-top:30px;">
+      <div style="font-size:14px;color:#888;margin-bottom:8px;">
+        사용자 검색
+      </div>
+
+      <input
+        id="adminUserSearch"
+        class="search"
+        placeholder="이름 또는 @username 검색"
+      >
+
+      <button
+        class="bigbtn"
+        style="margin-top:14px;"
+        onclick="adminSearchUser()"
+      >
+        사용자 찾기
+      </button>
+
+      <div id="adminSearchResults" style="margin-top:20px;"></div>
+    </div>
+  </div>
+</div>
+  
 <div class="overlay" id="receivePage">
   <div class="page">
     <button class="back" onclick="closeReceive()">×</button>
@@ -556,6 +587,14 @@ async function loadTeleBankingAccount() {
     }
 
     const user = data.user;
+
+    const moreBtn = document.getElementById("moreBtn");
+const moreBtnText = document.getElementById("moreBtnText");
+
+if (data.isAdmin === true) {
+  moreBtnText.textContent = "관리자";
+  moreBtn.onclick = openAdmin;
+}
    
 document.getElementById("monthlyReceived").textContent =
   "+" + Number(data.monthlyReceived || 0).toLocaleString("ko-KR") + " P";
@@ -762,7 +801,102 @@ function openSend(){
 function closePage(){
   document.getElementById("sendPage").classList.remove("show");
 }
+function openAdmin() {
+  document.getElementById("adminPage").classList.add("show");
+}
 
+function closeAdmin() {
+  document.getElementById("adminPage").classList.remove("show");
+}
+async function adminSearchUser() {
+  const input = document.getElementById("adminUserSearch");
+  const results = document.getElementById("adminSearchResults");
+  const query = String(input.value || "").trim();
+
+  if (!query) {
+    alert("검색할 이름 또는 @username을 입력해주세요.");
+    return;
+  }
+
+  results.innerHTML =
+    '<div style="padding:14px;color:#888;">검색 중...</div>';
+
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        initData: tg.initData,
+        action: "admin_search",
+        query: query
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      if (data.error === "ADMIN_ONLY") {
+        alert("관리자만 사용할 수 있습니다.");
+        closeAdmin();
+        return;
+      }
+
+      throw new Error(data.error || "ADMIN_SEARCH_FAILED");
+    }
+
+    const users = data.users || [];
+
+    if (users.length === 0) {
+      results.innerHTML =
+        '<div style="padding:20px;text-align:center;color:#888;">검색 결과가 없습니다.</div>';
+      return;
+    }
+
+    results.innerHTML = "";
+
+    users.forEach((user) => {
+      const item = document.createElement("div");
+
+      const name =
+        [user.first_name, user.last_name]
+          .filter(Boolean)
+          .join(" ") || "이름 없음";
+
+      const username =
+        user.username ? "@" + user.username : "username 없음";
+
+      const balance =
+        Number(user.balance || 0).toLocaleString("ko-KR");
+
+      item.style.cssText =
+        "padding:16px 4px;border-bottom:1px solid #eee;";
+
+      item.innerHTML =
+        '<div style="font-size:17px;font-weight:800;">' +
+        name +
+        '</div>' +
+        '<div style="font-size:14px;color:#777;margin-top:5px;">' +
+        username +
+        '</div>' +
+        '<div style="font-size:14px;color:#777;margin-top:4px;">Telegram ID: ' +
+        user.telegram_id +
+        '</div>' +
+        '<div style="font-size:18px;font-weight:800;margin-top:8px;">' +
+        balance +
+        ' P</div>';
+
+      results.appendChild(item);
+    });
+
+  } catch (error) {
+    console.error("관리자 사용자 검색 오류:", error);
+
+    results.innerHTML =
+      '<div style="padding:20px;text-align:center;color:#888;">검색 중 오류가 발생했습니다.</div>';
+  }
+}
 let friendTelegramId = null;
 let searchTimer = null;
 
