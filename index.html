@@ -866,7 +866,7 @@ function backToFriends(){
   document.getElementById("amountPage").classList.remove("show");
   document.getElementById("sendPage").classList.add("show");
 }
-
+let currentSendRequestId = null;
 async function sendDemo(){
   const value =
     document.getElementById("amountInput").value
@@ -883,7 +883,9 @@ async function sendDemo(){
     alert("보낼 포인트를 정확히 입력해주세요.");
     return;
   }
-
+  if (!currentSendRequestId) {
+  currentSendRequestId = crypto.randomUUID();
+}
   try {
     const response = await fetch(API_URL, {
       method: "POST",
@@ -891,12 +893,13 @@ async function sendDemo(){
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        initData: tg.initData,
-        action: "send",
-        receiverId: friendTelegramId,
-        amount: amount,
-        memo: ""
-      })
+  initData: tg.initData,
+  action: "send",
+  receiverId: friendTelegramId,
+  amount: amount,
+  memo: "",
+  requestId: currentSendRequestId
+})
     });
 
     const data = await response.json();
@@ -919,7 +922,8 @@ async function sendDemo(){
 
       throw new Error(data.error || "TRANSFER_FAILED");
     }
-
+    currentSendRequestId = null;
+    
     const amountText = amount.toLocaleString("ko-KR");
 
     document.getElementById("successText").innerHTML =
