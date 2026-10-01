@@ -602,11 +602,13 @@ if (tg) {
 }
 async function handlePaymentLink() {
   try {
-    const params = new URLSearchParams(window.location.search);
-    const payeeId = params.get("pay");
+    const startParam = tg.initDataUnsafe?.start_param || "";
 
-    if (!payeeId) return;
+if (!startParam.startsWith("pay_")) return;
 
+const payeeId = startParam.substring(4);
+
+if (!/^\d+$/.test(payeeId)) return;
     const response = await fetch(API_URL, {
       method: "POST",
       headers: {
@@ -954,9 +956,9 @@ function receivePoint(){
     ? "@" + user.username
     : [user.first_name, user.last_name].filter(Boolean).join(" ");
 
-  const receiveUrl =
-    "https://01039273012a-boop.github.io/telebanking/?pay=" +
-    encodeURIComponent(user.id);
+ const receiveUrl =
+  "https://t.me/TeleBankingApp_Bot/telebanking?startapp=pay_" +
+  encodeURIComponent(user.id);
 
   document.getElementById("receiveName").textContent = username;
   document.getElementById("receiveLink").textContent = receiveUrl;
