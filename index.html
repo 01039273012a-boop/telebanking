@@ -7,6 +7,7 @@
 <title>텔레뱅킹</title>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
 <style>
 *{box-sizing:border-box}
@@ -408,7 +409,7 @@ body{
     <h2>포인트 받기</h2>
 
     <div style="text-align:center;padding:35px 10px;">
-      <div style="font-size:54px;margin-bottom:18px;">▣</div>
+      <div id="receiveQr" style="display:flex;justify-content:center;margin-bottom:24px;"></div>
 
       <div style="font-size:20px;font-weight:800;margin-bottom:8px;">
         내 텔레뱅킹
@@ -912,6 +913,16 @@ function receivePoint(){
   document.getElementById("receiveName").textContent = username;
   document.getElementById("receiveLink").textContent = receiveUrl;
 
+
+  const qrBox = document.getElementById("receiveQr");
+qrBox.innerHTML = "";
+
+new QRCode(qrBox, {
+  text: receiveUrl,
+  width: 220,
+  height: 220,
+  correctLevel: QRCode.CorrectLevel.H
+});
   document.getElementById("receivePage").classList.add("show");
 }
 
